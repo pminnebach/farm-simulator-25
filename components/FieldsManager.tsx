@@ -35,6 +35,12 @@ function formatComponents(components: FieldWithComponents["components"]) {
   return components.map((c) => c.number).join(" + ");
 }
 
+function formatEuroPerHa(purchaseCost: number, sizeHa: number) {
+  if (sizeHa <= 0) return "—";
+  const perHa = Math.floor((purchaseCost / sizeHa) * 100) / 100;
+  return `€${perHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha`;
+}
+
 function FieldActions({
   field,
   pending,
@@ -183,6 +189,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
             <Table.Th>Field #</Table.Th>
             <Table.Th>Size</Table.Th>
             <Table.Th>Purchase cost</Table.Th>
+            <Table.Th>€/ha</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -193,6 +200,9 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
                 <Table.Td>{field.number}</Table.Td>
                 <Table.Td>{field.sizeHa.toLocaleString()} ha</Table.Td>
                 <Table.Td>€{field.purchaseCost.toLocaleString()}</Table.Td>
+                <Table.Td>
+                  {formatEuroPerHa(field.purchaseCost, field.sizeHa)}
+                </Table.Td>
                 <Table.Td>
                   <FieldActions
                     field={field}
@@ -205,7 +215,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
             ))
           ) : (
             <EmptyRow
-              colSpan={4}
+              colSpan={5}
               message="No individual fields yet. Add your first field."
             />
           )}
@@ -224,6 +234,14 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               <Table.Td>
                 <Text fw={700}>
                   €{individualTotals.purchaseCost.toLocaleString()}
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>
+                  {formatEuroPerHa(
+                    individualTotals.purchaseCost,
+                    individualTotals.sizeHa,
+                  )}
                 </Text>
               </Table.Td>
               <Table.Td />
