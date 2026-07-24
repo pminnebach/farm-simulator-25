@@ -39,7 +39,7 @@ function formatComponents(components: FieldWithComponents["components"]) {
 function formatEuroPerHa(purchaseCost: number, sizeHa: number) {
   if (sizeHa <= 0) return "—";
   const perHa = Math.floor((purchaseCost / sizeHa) * 100) / 100;
-  return `€${formatNumber(perHa, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha`;
+  return `€ ${formatNumber(perHa, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} /ha`;
 }
 
 function FieldActions({
@@ -200,7 +200,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               <Table.Tr key={field.id}>
                 <Table.Td>{field.number}</Table.Td>
                 <Table.Td>{formatNumber(field.sizeHa)} ha</Table.Td>
-                <Table.Td>€{formatNumber(field.purchaseCost)}</Table.Td>
+                <Table.Td>€ {formatNumber(field.purchaseCost)}</Table.Td>
                 <Table.Td>
                   {formatEuroPerHa(field.purchaseCost, field.sizeHa)}
                 </Table.Td>
@@ -234,7 +234,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  €{formatNumber(individualTotals.purchaseCost)}
+                  € {formatNumber(individualTotals.purchaseCost)}
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -271,7 +271,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
                 <Table.Td>{field.number}</Table.Td>
                 <Table.Td>{formatComponents(field.components)}</Table.Td>
                 <Table.Td>{formatNumber(field.sizeHa)} ha</Table.Td>
-                <Table.Td>€{formatNumber(field.purchaseCost)}</Table.Td>
+                <Table.Td>€ {formatNumber(field.purchaseCost)}</Table.Td>
                 <Table.Td>
                   <FieldActions
                     field={field}
@@ -301,7 +301,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  €{formatNumber(mergedTotals.purchaseCost)}
+                  € {formatNumber(mergedTotals.purchaseCost)}
                 </Text>
               </Table.Td>
               <Table.Td />

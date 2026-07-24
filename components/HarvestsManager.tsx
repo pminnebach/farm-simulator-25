@@ -80,12 +80,12 @@ const emptySaleForm: SaleFormValues = {
 
 function formatMoney(n: number | null) {
   if (n == null) return "—";
-  return `€${formatNumber(n, { maximumFractionDigits: 2 })}`;
+  return `€ ${formatNumber(n, { maximumFractionDigits: 2 })}`;
 }
 
 function formatPerUnit(liters: number | null, saleAmount: number | null) {
   if (saleAmount == null || liters == null || liters <= 0) return "—";
-  return `${formatMoney(saleAmount / liters)}/L`;
+  return `${formatMoney(saleAmount / liters)} /L`;
 }
 
 function formatYield(liters: number | null, fields: HarvestRow["fields"]) {
@@ -102,7 +102,7 @@ function formatEuroPerHa(
   if (saleAmount == null) return "—";
   const sizeHa = fields.reduce((sum, f) => sum + f.sizeHa, 0);
   if (sizeHa <= 0) return "—";
-  return `${formatMoney(saleAmount / sizeHa)}/ha`;
+  return `${formatMoney(saleAmount / sizeHa)} /ha`;
 }
 
 function parseOptionalAmount(value: number | string): number | null {
@@ -375,7 +375,7 @@ export function HarvestsManager({
 
   const totalEuroPerHa =
     totals.saleAmount > 0 && totals.sizeHa > 0
-      ? `${formatMoney(totals.saleAmount / totals.sizeHa)}/ha`
+      ? `${formatMoney(totals.saleAmount / totals.sizeHa)} /ha`
       : "—";
 
   const sorted =
