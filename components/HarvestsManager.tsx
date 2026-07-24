@@ -16,7 +16,7 @@ import {
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { FieldWithComponents } from "@/lib/actions/fields";
 import {
   createHarvest,
@@ -153,6 +153,7 @@ export function HarvestsManager({
   const [pending, startTransition] = useTransition();
   const [rows, setRows] = useState(harvests);
   const [dragId, setDragId] = useState<number | null>(null);
+  const dragIdRef = useRef<number | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: "order",
     dir: "asc",
@@ -235,9 +236,11 @@ export function HarvestsManager({
   }
 
   function handleDrop(targetId: number) {
-    if (dragId == null || dragId === targetId || !canDrag) return;
-    const next = moveRow(rows, dragId, targetId);
+    const fromId = dragIdRef.current;
+    if (fromId == null || fromId === targetId || !canDrag) return;
+    const next = moveRow(rows, fromId, targetId);
     setRows(next);
+    dragIdRef.current = null;
     setDragId(null);
     startTransition(async () => {
       await reorderHarvests(next.map((r) => r.id));
@@ -282,16 +285,26 @@ export function HarvestsManager({
     <Table.Tr
       key={row.id}
       draggable={canDrag}
-      onDragStart={() => {
+      onDragStart={(e) => {
         if (!canDrag) return;
+        e.dataTransfer.setData("text/plain", String(row.id));
+        e.dataTransfer.effectAllowed = "move";
+        dragIdRef.current = row.id;
         setDragId(row.id);
       }}
       onDragOver={(e) => {
         if (!canDrag) return;
         e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
       }}
-      onDrop={() => handleDrop(row.id)}
-      onDragEnd={() => setDragId(null)}
+      onDrop={(e) => {
+        e.preventDefault();
+        handleDrop(row.id);
+      }}
+      onDragEnd={() => {
+        dragIdRef.current = null;
+        setDragId(null);
+      }}
       style={{
         opacity: dragId === row.id ? 0.5 : 1,
         cursor: canDrag ? "grab" : undefined,

@@ -130,7 +130,8 @@ export async function reorderHarvests(orderedIds: number[]) {
     for (let i = 0; i < orderedIds.length; i++) {
       tx.update(harvests)
         .set({ sortOrder: i })
-        .where(eq(harvests.id, orderedIds[i]));
+        .where(eq(harvests.id, orderedIds[i]))
+        .run();
     }
   });
   revalidatePath("/harvests");
