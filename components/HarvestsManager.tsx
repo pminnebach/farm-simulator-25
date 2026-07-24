@@ -19,6 +19,7 @@ import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { FieldWithComponents } from "@/lib/actions/fields";
 import {
+  addHarvestCosts,
   createHarvest,
   deleteHarvest,
   type HarvestRow,
@@ -42,11 +43,27 @@ type FormValues = {
   fuelCost: number | string;
 };
 
+type CostFormValues = {
+  wagePayment: number | string;
+  vehicleLeasingCost: number | string;
+  fertilizerCost: number | string;
+  seedCost: number | string;
+  fuelCost: number | string;
+};
+
 const emptyForm: FormValues = {
   fieldIds: [],
   cropType: null,
   liters: "",
   saleAmount: "",
+  wagePayment: "",
+  vehicleLeasingCost: "",
+  fertilizerCost: "",
+  seedCost: "",
+  fuelCost: "",
+};
+
+const emptyCostForm: CostFormValues = {
   wagePayment: "",
   vehicleLeasingCost: "",
   fertilizerCost: "",
@@ -149,7 +166,10 @@ export function HarvestsManager({
   fields: FieldWithComponents[];
 }) {
   const [opened, { open, close }] = useDisclosure(false);
+  const [costsOpened, { open: openCosts, close: closeCosts }] =
+    useDisclosure(false);
   const [editing, setEditing] = useState<HarvestRow | null>(null);
+  const [addingCosts, setAddingCosts] = useState<HarvestRow | null>(null);
   const [pending, startTransition] = useTransition();
   const [rows, setRows] = useState(harvests);
   const [dragId, setDragId] = useState<number | null>(null);
@@ -174,6 +194,10 @@ export function HarvestsManager({
     initialValues: emptyForm,
   });
 
+  const costForm = useForm<CostFormValues>({
+    initialValues: emptyCostForm,
+  });
+
   function openCreate() {
     setEditing(null);
     form.setValues(emptyForm);
@@ -196,6 +220,12 @@ export function HarvestsManager({
     open();
   }
 
+  function openAddCosts(row: HarvestRow) {
+    setAddingCosts(row);
+    costForm.setValues(emptyCostForm);
+    openCosts();
+  }
+
   function handleSubmit(values: FormValues) {
     const input = {
       fieldIds: values.fieldIds.map(Number),
@@ -216,6 +246,20 @@ export function HarvestsManager({
         await createHarvest(input);
       }
       close();
+    });
+  }
+
+  function handleAddCosts(values: CostFormValues) {
+    if (!addingCosts) return;
+    startTransition(async () => {
+      await addHarvestCosts(addingCosts.id, {
+        wagePayment: parseOptionalAmount(values.wagePayment),
+        vehicleLeasingCost: parseOptionalAmount(values.vehicleLeasingCost),
+        fertilizerCost: parseOptionalAmount(values.fertilizerCost),
+        seedCost: parseOptionalAmount(values.seedCost),
+        fuelCost: parseOptionalAmount(values.fuelCost),
+      });
+      closeCosts();
     });
   }
 
@@ -333,6 +377,13 @@ export function HarvestsManager({
         <Group gap="xs">
           <Button size="xs" variant="light" onClick={() => openEdit(row)}>
             Edit
+          </Button>
+          <Button
+            size="xs"
+            variant="light"
+            onClick={() => openAddCosts(row)}
+          >
+            Add costs
           </Button>
           <Button
             size="xs"
@@ -522,6 +573,56 @@ export function HarvestsManager({
               </Button>
               <Button type="submit" loading={pending}>
                 Save
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      <Modal
+        opened={costsOpened}
+        onClose={closeCosts}
+        title="Add costs"
+        size="md"
+      >
+        <form onSubmit={costForm.onSubmit(handleAddCosts)}>
+          <Stack>
+            <NumberInput
+              label={`Wage payment (€) — current ${formatMoney(addingCosts?.wagePayment ?? null)}`}
+              min={0}
+              decimalScale={2}
+              {...costForm.getInputProps("wagePayment")}
+            />
+            <NumberInput
+              label={`Vehicle leasing cost (€) — current ${formatMoney(addingCosts?.vehicleLeasingCost ?? null)}`}
+              min={0}
+              decimalScale={2}
+              {...costForm.getInputProps("vehicleLeasingCost")}
+            />
+            <NumberInput
+              label={`Fertilizer cost (€) — current ${formatMoney(addingCosts?.fertilizerCost ?? null)}`}
+              min={0}
+              decimalScale={2}
+              {...costForm.getInputProps("fertilizerCost")}
+            />
+            <NumberInput
+              label={`Seed cost (€) — current ${formatMoney(addingCosts?.seedCost ?? null)}`}
+              min={0}
+              decimalScale={2}
+              {...costForm.getInputProps("seedCost")}
+            />
+            <NumberInput
+              label={`Fuel cost (€) — current ${formatMoney(addingCosts?.fuelCost ?? null)}`}
+              min={0}
+              decimalScale={2}
+              {...costForm.getInputProps("fuelCost")}
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={closeCosts}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Add costs
               </Button>
             </Group>
           </Stack>

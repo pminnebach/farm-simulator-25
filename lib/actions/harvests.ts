@@ -146,6 +146,34 @@ export async function updateHarvest(id: number, input: HarvestInput) {
   revalidatePath("/harvests");
 }
 
+export type HarvestCostDeltas = {
+  wagePayment?: number | null;
+  vehicleLeasingCost?: number | null;
+  fertilizerCost?: number | null;
+  seedCost?: number | null;
+  fuelCost?: number | null;
+};
+
+export async function addHarvestCosts(id: number, deltas: HarvestCostDeltas) {
+  const [row] = await db.select().from(harvests).where(eq(harvests.id, id));
+  if (!row) return;
+
+  const add = (current: number | null, delta: number | null | undefined) =>
+    delta == null ? current : (current ?? 0) + delta;
+
+  await db
+    .update(harvests)
+    .set({
+      wagePayment: add(row.wagePayment, deltas.wagePayment),
+      vehicleLeasingCost: add(row.vehicleLeasingCost, deltas.vehicleLeasingCost),
+      fertilizerCost: add(row.fertilizerCost, deltas.fertilizerCost),
+      seedCost: add(row.seedCost, deltas.seedCost),
+      fuelCost: add(row.fuelCost, deltas.fuelCost),
+    })
+    .where(eq(harvests.id, id));
+  revalidatePath("/harvests");
+}
+
 export async function deleteHarvest(id: number) {
   await db.delete(harvests).where(eq(harvests.id, id));
   revalidatePath("/harvests");
