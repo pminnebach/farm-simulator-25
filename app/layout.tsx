@@ -1,6 +1,10 @@
 import "@mantine/core/styles.css";
 
-import { MantineProvider, mantineHtmlProps } from "@mantine/core";
+import {
+  ColorSchemeScript,
+  MantineProvider,
+  mantineHtmlProps,
+} from "@mantine/core";
 import type { Metadata } from "next";
 import { AppShellLayout } from "@/components/AppShellLayout";
 import "./globals.css";
@@ -16,11 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // ponytail: no ColorSchemeScript — the app is light-only, so mantineHtmlProps'
-    // data-mantine-color-scheme="light" is enough. Add it back with a scheme toggle.
     <html lang="en" {...mantineHtmlProps}>
+      <head>
+        <ColorSchemeScript defaultColorScheme="light" />
+      </head>
       <body>
-        <MantineProvider forceColorScheme="light">
+        <MantineProvider defaultColorScheme="light">
           <AppShellLayout>{children}</AppShellLayout>
         </MantineProvider>
       </body>

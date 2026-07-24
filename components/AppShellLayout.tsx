@@ -1,7 +1,17 @@
 "use client";
 
-import { AppShell, Burger, Group, NavLink, Title } from "@mantine/core";
+import {
+  ActionIcon,
+  AppShell,
+  Burger,
+  Group,
+  NavLink,
+  Title,
+  useComputedColorScheme,
+  useMantineColorScheme,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,6 +23,8 @@ const links = [
 export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
   const pathname = usePathname();
+  const { toggleColorScheme } = useMantineColorScheme();
+  const computed = useComputedColorScheme();
 
   return (
     <AppShell
@@ -25,9 +37,18 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md">
-          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <Title order={3}>Farm Manager</Title>
+        <Group h="100%" px="md" justify="space-between" style={{ flex: 1 }}>
+          <Group>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Title order={3}>Farm Manager</Title>
+          </Group>
+          <ActionIcon
+            variant="default"
+            onClick={toggleColorScheme}
+            aria-label="Toggle color scheme"
+          >
+            {computed === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </ActionIcon>
         </Group>
       </AppShell.Header>
 
