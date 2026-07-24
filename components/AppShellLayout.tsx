@@ -3,6 +3,7 @@
 import {
   ActionIcon,
   AppShell,
+  Box,
   Burger,
   Group,
   NavLink,
@@ -23,8 +24,10 @@ const links = [
 export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
   const pathname = usePathname();
-  const { toggleColorScheme } = useMantineColorScheme();
-  const computed = useComputedColorScheme();
+  const { setColorScheme } = useMantineColorScheme();
+  const computed = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
 
   return (
     <AppShell
@@ -44,10 +47,17 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
           </Group>
           <ActionIcon
             variant="default"
-            onClick={toggleColorScheme}
+            onClick={() =>
+              setColorScheme(computed === "light" ? "dark" : "light")
+            }
             aria-label="Toggle color scheme"
           >
-            {computed === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            <Box darkHidden component="span" display="flex">
+              <Moon size={18} />
+            </Box>
+            <Box lightHidden component="span" display="flex">
+              <Sun size={18} />
+            </Box>
           </ActionIcon>
         </Group>
       </AppShell.Header>

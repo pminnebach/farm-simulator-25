@@ -29,6 +29,7 @@ export const fieldMerges = sqliteTable(
 
 export const harvests = sqliteTable("harvests", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  sortOrder: integer("sort_order").notNull(),
   cropType: text("crop_type"),
   liters: real("liters"),
   saleAmount: real("sale_amount"),

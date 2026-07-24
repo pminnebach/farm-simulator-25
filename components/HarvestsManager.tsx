@@ -15,18 +15,19 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useTransition } from "react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 import type { FieldWithComponents } from "@/lib/actions/fields";
 import {
   createHarvest,
   deleteHarvest,
   type HarvestRow,
+  reorderHarvests,
   updateHarvest,
 } from "@/lib/actions/harvests";
 import { CROP_TYPES } from "@/lib/crops";
 
-type SortKey = "id" | "crop";
+type SortKey = "order" | "id" | "crop";
 type SortDir = "asc" | "desc";
 
 type FormValues = {
@@ -121,12 +122,23 @@ function compareHarvests(
   dir: SortDir,
 ) {
   const sign = dir === "asc" ? 1 : -1;
+  if (key === "order") return (a.sortOrder - b.sortOrder) * sign;
   if (key === "id") return (a.id - b.id) * sign;
   const aCrop = a.cropType ?? "";
   const bCrop = b.cropType ?? "";
   if (!aCrop && bCrop) return 1;
   if (aCrop && !bCrop) return -1;
   return aCrop.localeCompare(bCrop) * sign;
+}
+
+function moveRow(rows: HarvestRow[], fromId: number, toId: number) {
+  const from = rows.findIndex((r) => r.id === fromId);
+  const to = rows.findIndex((r) => r.id === toId);
+  if (from < 0 || to < 0 || from === to) return rows;
+  const next = [...rows];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
 }
 
 export function HarvestsManager({
@@ -139,10 +151,18 @@ export function HarvestsManager({
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<HarvestRow | null>(null);
   const [pending, startTransition] = useTransition();
+  const [rows, setRows] = useState(harvests);
+  const [dragId, setDragId] = useState<number | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
-    key: "id",
+    key: "order",
     dir: "asc",
   });
+
+  useEffect(() => {
+    setRows(harvests);
+  }, [harvests]);
+
+  const canDrag = sort.key === "order";
 
   const fieldOptions = fields.map((f) => ({
     value: String(f.id),
@@ -206,14 +226,25 @@ export function HarvestsManager({
   }
 
   function toggleSort(key: SortKey) {
-    setSort((prev) =>
-      prev.key === key
+    setSort((prev) => {
+      if (key === "order") return { key: "order", dir: "asc" };
+      return prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
-    );
+        : { key, dir: "asc" };
+    });
   }
 
-  const totals = harvests.reduce(
+  function handleDrop(targetId: number) {
+    if (dragId == null || dragId === targetId || !canDrag) return;
+    const next = moveRow(rows, dragId, targetId);
+    setRows(next);
+    setDragId(null);
+    startTransition(async () => {
+      await reorderHarvests(next.map((r) => r.id));
+    });
+  }
+
+  const totals = rows.reduce(
     (acc, row) => {
       acc.wagePayment += row.wagePayment ?? 0;
       acc.vehicleLeasingCost += row.vehicleLeasingCost ?? 0;
@@ -242,12 +273,35 @@ export function HarvestsManager({
       ? `${Math.round(totals.liters / totals.sizeHa).toLocaleString()} L/ha`
       : "—";
 
-  const sorted = [...harvests].sort((a, b) =>
-    compareHarvests(a, b, sort.key, sort.dir),
-  );
+  const sorted =
+    sort.key === "order"
+      ? rows
+      : [...rows].sort((a, b) => compareHarvests(a, b, sort.key, sort.dir));
 
-  const rows = sorted.map((row) => (
-    <Table.Tr key={row.id}>
+  const tableRows = sorted.map((row) => (
+    <Table.Tr
+      key={row.id}
+      draggable={canDrag}
+      onDragStart={() => {
+        if (!canDrag) return;
+        setDragId(row.id);
+      }}
+      onDragOver={(e) => {
+        if (!canDrag) return;
+        e.preventDefault();
+      }}
+      onDrop={() => handleDrop(row.id)}
+      onDragEnd={() => setDragId(null)}
+      style={{
+        opacity: dragId === row.id ? 0.5 : 1,
+        cursor: canDrag ? "grab" : undefined,
+      }}
+    >
+      <Table.Td w={36} style={{ verticalAlign: "middle" }}>
+        {canDrag ? (
+          <GripVertical size={16} aria-label="Drag to reorder" />
+        ) : null}
+      </Table.Td>
       <Table.Td>{row.id}</Table.Td>
       <Table.Td>{formatFieldNumbers(row.fields)}</Table.Td>
       <Table.Td>{row.cropType ?? "—"}</Table.Td>
@@ -285,12 +339,20 @@ export function HarvestsManager({
     <>
       <Group justify="space-between" mb="md">
         <Title order={2}>Harvests</Title>
-        <Button onClick={openCreate}>Add harvest</Button>
+        <Group>
+          {sort.key !== "order" && (
+            <Button variant="default" onClick={() => toggleSort("order")}>
+              Manual order
+            </Button>
+          )}
+          <Button onClick={openCreate}>Add harvest</Button>
+        </Group>
       </Group>
 
       <Table striped highlightOnHover withTableBorder>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th w={36} />
             <Table.Th>
               <SortHeader
                 label="ID"
@@ -321,11 +383,11 @@ export function HarvestsManager({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {rows.length > 0 ? (
-            rows
+          {tableRows.length > 0 ? (
+            tableRows
           ) : (
             <Table.Tr>
-              <Table.Td colSpan={13}>
+              <Table.Td colSpan={14}>
                 <Text c="dimmed" ta="center" py="lg">
                   No harvests yet.
                 </Text>
@@ -333,9 +395,10 @@ export function HarvestsManager({
             </Table.Tr>
           )}
         </Table.Tbody>
-        {harvests.length > 0 && (
+        {rows.length > 0 && (
           <Table.Tfoot>
             <Table.Tr>
+              <Table.Td />
               <Table.Td />
               <Table.Td>
                 <Text fw={700}>Total</Text>

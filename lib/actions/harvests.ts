@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { fields, harvestFields, harvests } from "@/lib/db/schema";
@@ -13,6 +13,7 @@ export type HarvestFieldRef = {
 
 export type HarvestRow = {
   id: number;
+  sortOrder: number;
   cropType: string | null;
   liters: number | null;
   saleAmount: number | null;
@@ -61,7 +62,10 @@ async function setHarvestFields(harvestId: number, fieldIds: number[]) {
 }
 
 export async function listHarvests(): Promise<HarvestRow[]> {
-  const rows = await db.select().from(harvests).orderBy(asc(harvests.id));
+  const rows = await db
+    .select()
+    .from(harvests)
+    .orderBy(asc(harvests.sortOrder));
 
   if (rows.length === 0) return [];
 
@@ -90,6 +94,7 @@ export async function listHarvests(): Promise<HarvestRow[]> {
 
   return rows.map((row) => ({
     id: row.id,
+    sortOrder: row.sortOrder,
     cropType: row.cropType,
     liters: row.liters,
     saleAmount: row.saleAmount,
@@ -103,12 +108,31 @@ export async function listHarvests(): Promise<HarvestRow[]> {
 }
 
 export async function createHarvest(input: HarvestInput) {
+  const [maxRow] = await db
+    .select({ sortOrder: harvests.sortOrder })
+    .from(harvests)
+    .orderBy(desc(harvests.sortOrder))
+    .limit(1);
+  const sortOrder = (maxRow?.sortOrder ?? -1) + 1;
+
   const [created] = await db
     .insert(harvests)
-    .values(harvestValues(input))
+    .values({ ...harvestValues(input), sortOrder })
     .returning({ id: harvests.id });
 
   await setHarvestFields(created.id, input.fieldIds);
+  revalidatePath("/harvests");
+}
+
+export async function reorderHarvests(orderedIds: number[]) {
+  // better-sqlite3 transactions are sync
+  db.transaction((tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      tx.update(harvests)
+        .set({ sortOrder: i })
+        .where(eq(harvests.id, orderedIds[i]));
+    }
+  });
   revalidatePath("/harvests");
 }
 

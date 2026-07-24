@@ -44,6 +44,19 @@ function migrateMergedFromJson(sqlite: Database.Database) {
   migrate();
 }
 
+function migrateHarvestSortOrder(sqlite: Database.Database) {
+  const columns = sqlite.prepare("PRAGMA table_info(harvests)").all() as {
+    name: string;
+  }[];
+  if (columns.length === 0) return;
+  if (columns.some((c) => c.name === "sort_order")) return;
+
+  sqlite.exec(`
+    ALTER TABLE harvests ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+    UPDATE harvests SET sort_order = id;
+  `);
+}
+
 // ponytail: the single-field harvests table was replaced by the multi-field one,
 // which takes over the `harvests` name. Drop once every DB has been through this.
 function migrateAdvancedHarvestsToHarvests(sqlite: Database.Database) {
@@ -75,12 +88,15 @@ function migrateAdvancedHarvestsToHarvests(sqlite: Database.Database) {
   migrate();
 }
 
-function createDb() {
+function openSqlite() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const sqlite = new Database(dbPath);
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
+  return sqlite;
+}
 
+function migrateAll(sqlite: Database.Database) {
   migrateAdvancedHarvestsToHarvests(sqlite);
 
   sqlite.exec(`
@@ -99,6 +115,7 @@ function createDb() {
 
     CREATE TABLE IF NOT EXISTS harvests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       crop_type TEXT,
       liters REAL,
       sale_amount REAL,
@@ -117,17 +134,21 @@ function createDb() {
   `);
 
   migrateMergedFromJson(sqlite);
-
-  return drizzle(sqlite, { schema });
+  migrateHarvestSortOrder(sqlite);
 }
 
-// ponytail: module singleton is fine for a single-process Next.js server
+// ponytail: HMR reuses the drizzle client, so migrations must run on every module load
 const globalForDb = globalThis as unknown as {
-  farmDb?: ReturnType<typeof createDb>;
+  farmDb?: ReturnType<typeof drizzle<typeof schema>>;
+  farmSqlite?: Database.Database;
 };
 
-export const db = globalForDb.farmDb ?? createDb();
+const sqlite = globalForDb.farmSqlite ?? openSqlite();
+migrateAll(sqlite);
+
+export const db = globalForDb.farmDb ?? drizzle(sqlite, { schema });
 
 if (process.env.NODE_ENV !== "production") {
+  globalForDb.farmSqlite = sqlite;
   globalForDb.farmDb = db;
 }
