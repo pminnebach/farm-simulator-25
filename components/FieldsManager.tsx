@@ -84,6 +84,15 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
   const individualFields = fields.filter((f) => f.components.length === 0);
   const mergedFields = fields.filter((f) => f.components.length > 0);
 
+  const individualTotals = {
+    sizeHa: individualFields.reduce((sum, f) => sum + f.sizeHa, 0),
+    purchaseCost: individualFields.reduce((sum, f) => sum + f.purchaseCost, 0),
+  };
+  const mergedTotals = {
+    sizeHa: mergedFields.reduce((sum, f) => sum + f.sizeHa, 0),
+    purchaseCost: mergedFields.reduce((sum, f) => sum + f.purchaseCost, 0),
+  };
+
   const form = useForm<FieldFormValues>({
     initialValues: {
       number: "",
@@ -201,6 +210,26 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
             />
           )}
         </Table.Tbody>
+        {individualFields.length > 0 && (
+          <Table.Tfoot>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={700}>Total</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>
+                  {individualTotals.sizeHa.toLocaleString()} ha
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>
+                  €{individualTotals.purchaseCost.toLocaleString()}
+                </Text>
+              </Table.Td>
+              <Table.Td />
+            </Table.Tr>
+          </Table.Tfoot>
+        )}
       </Table>
 
       <Title order={4} mb="sm">
@@ -241,6 +270,25 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
             />
           )}
         </Table.Tbody>
+        {mergedFields.length > 0 && (
+          <Table.Tfoot>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={700}>Total</Text>
+              </Table.Td>
+              <Table.Td />
+              <Table.Td>
+                <Text fw={700}>{mergedTotals.sizeHa.toLocaleString()} ha</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>
+                  €{mergedTotals.purchaseCost.toLocaleString()}
+                </Text>
+              </Table.Td>
+              <Table.Td />
+            </Table.Tr>
+          </Table.Tfoot>
+        )}
       </Table>
 
       <Modal

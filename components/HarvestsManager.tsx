@@ -156,6 +156,35 @@ export function HarvestsManager({
     });
   }
 
+  const totals = harvests.reduce(
+    (acc, row) => {
+      acc.wagePayment += row.wagePayment ?? 0;
+      acc.vehicleLeasingCost += row.vehicleLeasingCost ?? 0;
+      acc.fertilizerCost += row.fertilizerCost ?? 0;
+      acc.seedCost += row.seedCost ?? 0;
+      acc.fuelCost += row.fuelCost ?? 0;
+      acc.liters += row.liters ?? 0;
+      acc.saleAmount += row.saleAmount ?? 0;
+      acc.sizeHa += row.fields.reduce((sum, f) => sum + f.sizeHa, 0);
+      return acc;
+    },
+    {
+      wagePayment: 0,
+      vehicleLeasingCost: 0,
+      fertilizerCost: 0,
+      seedCost: 0,
+      fuelCost: 0,
+      liters: 0,
+      saleAmount: 0,
+      sizeHa: 0,
+    },
+  );
+
+  const totalYield =
+    totals.liters > 0 && totals.sizeHa > 0
+      ? `${Math.round(totals.liters / totals.sizeHa).toLocaleString()} L/ha`
+      : "—";
+
   const rows = harvests.map((row) => (
     <Table.Tr key={row.id}>
       <Table.Td>{formatFieldNumbers(row.fields)}</Table.Td>
@@ -227,6 +256,46 @@ export function HarvestsManager({
             </Table.Tr>
           )}
         </Table.Tbody>
+        {harvests.length > 0 && (
+          <Table.Tfoot>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={700}>Total</Text>
+              </Table.Td>
+              <Table.Td />
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.wagePayment)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.vehicleLeasingCost)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.fertilizerCost)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.seedCost)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.fuelCost)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{totals.liters.toLocaleString()} L</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{formatMoney(totals.saleAmount)}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>
+                  {formatPerUnit(totals.liters, totals.saleAmount)}
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{totalYield}</Text>
+              </Table.Td>
+              <Table.Td />
+            </Table.Tr>
+          </Table.Tfoot>
+        )}
       </Table>
 
       <Modal
