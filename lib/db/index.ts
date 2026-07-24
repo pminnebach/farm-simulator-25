@@ -93,6 +93,15 @@ function migrateHarvestSales(sqlite: Database.Database) {
   migrate();
 }
 
+function migrateDropHarvestFuelCost(sqlite: Database.Database) {
+  const columns = sqlite.prepare("PRAGMA table_info(harvests)").all() as {
+    name: string;
+  }[];
+  if (!columns.some((c) => c.name === "fuel_cost")) return;
+
+  sqlite.exec("ALTER TABLE harvests DROP COLUMN fuel_cost");
+}
+
 // ponytail: the single-field harvests table was replaced by the multi-field one,
 // which takes over the `harvests` name. Drop once every DB has been through this.
 function migrateAdvancedHarvestsToHarvests(sqlite: Database.Database) {
@@ -157,8 +166,7 @@ function migrateAll(sqlite: Database.Database) {
       wage_payment REAL,
       vehicle_leasing_cost REAL,
       fertilizer_cost REAL,
-      seed_cost REAL,
-      fuel_cost REAL
+      seed_cost REAL
     );
 
     CREATE TABLE IF NOT EXISTS harvest_fields (
@@ -178,6 +186,7 @@ function migrateAll(sqlite: Database.Database) {
   migrateMergedFromJson(sqlite);
   migrateHarvestSortOrder(sqlite);
   migrateHarvestSales(sqlite);
+  migrateDropHarvestFuelCost(sqlite);
 }
 
 // ponytail: HMR reuses the drizzle client, so migrations must run on every module load

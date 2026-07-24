@@ -42,7 +42,6 @@ type FormValues = {
   vehicleLeasingCost: number | string;
   fertilizerCost: number | string;
   seedCost: number | string;
-  fuelCost: number | string;
 };
 
 type CostFormValues = {
@@ -50,7 +49,6 @@ type CostFormValues = {
   vehicleLeasingCost: number | string;
   fertilizerCost: number | string;
   seedCost: number | string;
-  fuelCost: number | string;
 };
 
 type SaleFormValues = {
@@ -66,7 +64,6 @@ const emptyForm: FormValues = {
   vehicleLeasingCost: "",
   fertilizerCost: "",
   seedCost: "",
-  fuelCost: "",
 };
 
 const emptyCostForm: CostFormValues = {
@@ -74,7 +71,6 @@ const emptyCostForm: CostFormValues = {
   vehicleLeasingCost: "",
   fertilizerCost: "",
   seedCost: "",
-  fuelCost: "",
 };
 
 const emptySaleForm: SaleFormValues = {
@@ -97,6 +93,16 @@ function formatYield(liters: number | null, fields: HarvestRow["fields"]) {
   const sizeHa = fields.reduce((sum, f) => sum + f.sizeHa, 0);
   if (sizeHa <= 0) return "—";
   return `${formatNumber(Math.round(liters / sizeHa))} L/ha`;
+}
+
+function formatEuroPerHa(
+  saleAmount: number | null,
+  fields: HarvestRow["fields"],
+) {
+  if (saleAmount == null) return "—";
+  const sizeHa = fields.reduce((sum, f) => sum + f.sizeHa, 0);
+  if (sizeHa <= 0) return "—";
+  return `${formatMoney(saleAmount / sizeHa)}/ha`;
 }
 
 function parseOptionalAmount(value: number | string): number | null {
@@ -241,7 +247,6 @@ export function HarvestsManager({
       vehicleLeasingCost: row.vehicleLeasingCost ?? "",
       fertilizerCost: row.fertilizerCost ?? "",
       seedCost: row.seedCost ?? "",
-      fuelCost: row.fuelCost ?? "",
     });
     open();
   }
@@ -267,7 +272,6 @@ export function HarvestsManager({
       vehicleLeasingCost: parseOptionalAmount(values.vehicleLeasingCost),
       fertilizerCost: parseOptionalAmount(values.fertilizerCost),
       seedCost: parseOptionalAmount(values.seedCost),
-      fuelCost: parseOptionalAmount(values.fuelCost),
     };
 
     startTransition(async () => {
@@ -288,7 +292,6 @@ export function HarvestsManager({
         vehicleLeasingCost: parseOptionalAmount(values.vehicleLeasingCost),
         fertilizerCost: parseOptionalAmount(values.fertilizerCost),
         seedCost: parseOptionalAmount(values.seedCost),
-        fuelCost: parseOptionalAmount(values.fuelCost),
       });
       closeCosts();
     });
@@ -347,7 +350,6 @@ export function HarvestsManager({
       acc.vehicleLeasingCost += row.vehicleLeasingCost ?? 0;
       acc.fertilizerCost += row.fertilizerCost ?? 0;
       acc.seedCost += row.seedCost ?? 0;
-      acc.fuelCost += row.fuelCost ?? 0;
       acc.liters += row.liters ?? 0;
       acc.saleAmount += row.saleAmount ?? 0;
       acc.soldLiters += row.soldLiters;
@@ -359,7 +361,6 @@ export function HarvestsManager({
       vehicleLeasingCost: 0,
       fertilizerCost: 0,
       seedCost: 0,
-      fuelCost: 0,
       liters: 0,
       saleAmount: 0,
       soldLiters: 0,
@@ -370,6 +371,11 @@ export function HarvestsManager({
   const totalYield =
     totals.liters > 0 && totals.sizeHa > 0
       ? `${formatNumber(Math.round(totals.liters / totals.sizeHa))} L/ha`
+      : "—";
+
+  const totalEuroPerHa =
+    totals.saleAmount > 0 && totals.sizeHa > 0
+      ? `${formatMoney(totals.saleAmount / totals.sizeHa)}/ha`
       : "—";
 
   const sorted =
@@ -423,13 +429,13 @@ export function HarvestsManager({
       <Table.Td>{formatMoney(row.vehicleLeasingCost)}</Table.Td>
       <Table.Td>{formatMoney(row.fertilizerCost)}</Table.Td>
       <Table.Td>{formatMoney(row.seedCost)}</Table.Td>
-      <Table.Td>{formatMoney(row.fuelCost)}</Table.Td>
       <Table.Td>
         {row.liters == null ? "—" : `${formatNumber(row.liters)} L`}
       </Table.Td>
       <Table.Td>{formatMoney(row.saleAmount)}</Table.Td>
       <Table.Td>{formatPerUnit(row.soldLiters, row.saleAmount)}</Table.Td>
       <Table.Td>{formatYield(row.liters, row.fields)}</Table.Td>
+      <Table.Td>{formatEuroPerHa(row.saleAmount, row.fields)}</Table.Td>
       <Table.Td>
         <Group gap="xs">
           <Button size="xs" variant="light" onClick={() => openEdit(row)}>
@@ -498,11 +504,11 @@ export function HarvestsManager({
             <Table.Th>Vehicle lease</Table.Th>
             <Table.Th>Fertilizer</Table.Th>
             <Table.Th>Seed</Table.Th>
-            <Table.Th>Fuel</Table.Th>
             <Table.Th>Liters</Table.Th>
             <Table.Th>Sold for</Table.Th>
             <Table.Th>€/L</Table.Th>
             <Table.Th>Yield</Table.Th>
+            <Table.Th>€/ha</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -541,9 +547,6 @@ export function HarvestsManager({
                 <Text fw={700}>{formatMoney(totals.seedCost)}</Text>
               </Table.Td>
               <Table.Td>
-                <Text fw={700}>{formatMoney(totals.fuelCost)}</Text>
-              </Table.Td>
-              <Table.Td>
                 <Text fw={700}>{formatNumber(totals.liters)} L</Text>
               </Table.Td>
               <Table.Td>
@@ -556,6 +559,9 @@ export function HarvestsManager({
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>{totalYield}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fw={700}>{totalEuroPerHa}</Text>
               </Table.Td>
               <Table.Td />
             </Table.Tr>
@@ -610,12 +616,6 @@ export function HarvestsManager({
               {...form.getInputProps("seedCost")}
             />
             <NumberInput
-              label="Fuel cost (€)"
-              min={0}
-              decimalScale={2}
-              {...form.getInputProps("fuelCost")}
-            />
-            <NumberInput
               label="Liters harvested"
               min={0}
               decimalScale={2}
@@ -664,12 +664,6 @@ export function HarvestsManager({
               min={0}
               decimalScale={2}
               {...costForm.getInputProps("seedCost")}
-            />
-            <NumberInput
-              label={`Fuel cost (€) — current ${formatMoney(addingCosts?.fuelCost ?? null)}`}
-              min={0}
-              decimalScale={2}
-              {...costForm.getInputProps("fuelCost")}
             />
             <Group justify="flex-end">
               <Button variant="default" onClick={closeCosts}>

@@ -36,7 +36,6 @@ export const harvests = sqliteTable("harvests", {
   vehicleLeasingCost: real("vehicle_leasing_cost"),
   fertilizerCost: real("fertilizer_cost"),
   seedCost: real("seed_cost"),
-  fuelCost: real("fuel_cost"),
 });
 
 export const harvestFields = sqliteTable(

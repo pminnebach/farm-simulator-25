@@ -28,7 +28,6 @@ export type HarvestRow = {
   vehicleLeasingCost: number | null;
   fertilizerCost: number | null;
   seedCost: number | null;
-  fuelCost: number | null;
   fields: HarvestFieldRef[];
   sales: HarvestSaleRow[];
 };
@@ -41,7 +40,6 @@ export type HarvestInput = {
   vehicleLeasingCost: number | null;
   fertilizerCost: number | null;
   seedCost: number | null;
-  fuelCost: number | null;
 };
 
 function harvestValues(input: HarvestInput) {
@@ -52,7 +50,6 @@ function harvestValues(input: HarvestInput) {
     vehicleLeasingCost: input.vehicleLeasingCost,
     fertilizerCost: input.fertilizerCost,
     seedCost: input.seedCost,
-    fuelCost: input.fuelCost,
   };
 }
 
@@ -134,7 +131,6 @@ export async function listHarvests(): Promise<HarvestRow[]> {
       vehicleLeasingCost: row.vehicleLeasingCost,
       fertilizerCost: row.fertilizerCost,
       seedCost: row.seedCost,
-      fuelCost: row.fuelCost,
       fields: fieldsByHarvest.get(row.id) ?? [],
       sales: harvestSaleRows,
     };
@@ -185,7 +181,6 @@ export type HarvestCostDeltas = {
   vehicleLeasingCost?: number | null;
   fertilizerCost?: number | null;
   seedCost?: number | null;
-  fuelCost?: number | null;
 };
 
 export async function addHarvestCosts(id: number, deltas: HarvestCostDeltas) {
@@ -202,7 +197,6 @@ export async function addHarvestCosts(id: number, deltas: HarvestCostDeltas) {
       vehicleLeasingCost: add(row.vehicleLeasingCost, deltas.vehicleLeasingCost),
       fertilizerCost: add(row.fertilizerCost, deltas.fertilizerCost),
       seedCost: add(row.seedCost, deltas.seedCost),
-      fuelCost: add(row.fuelCost, deltas.fuelCost),
     })
     .where(eq(harvests.id, id));
   revalidatePath("/harvests");
