@@ -11,9 +11,11 @@ import {
   Table,
   Text,
   Title,
+  UnstyledButton,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { FieldWithComponents } from "@/lib/actions/fields";
 import {
@@ -23,6 +25,9 @@ import {
   updateHarvest,
 } from "@/lib/actions/harvests";
 import { CROP_TYPES } from "@/lib/crops";
+
+type SortKey = "id" | "crop";
+type SortDir = "asc" | "desc";
 
 type FormValues = {
   fieldIds: string[];
@@ -84,6 +89,46 @@ function formatFieldNumbers(fields: HarvestRow["fields"]) {
   return fields.map((f) => `#${f.number}`).join(", ");
 }
 
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  const Icon = dir === "asc" ? ChevronUp : ChevronDown;
+  return (
+    <UnstyledButton
+      onClick={onClick}
+      style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+    >
+      <Text component="span" size="sm" fw={700}>
+        {label}
+      </Text>
+      {active && <Icon size={14} />}
+    </UnstyledButton>
+  );
+}
+
+function compareHarvests(
+  a: HarvestRow,
+  b: HarvestRow,
+  key: SortKey,
+  dir: SortDir,
+) {
+  const sign = dir === "asc" ? 1 : -1;
+  if (key === "id") return (a.id - b.id) * sign;
+  const aCrop = a.cropType ?? "";
+  const bCrop = b.cropType ?? "";
+  if (!aCrop && bCrop) return 1;
+  if (aCrop && !bCrop) return -1;
+  return aCrop.localeCompare(bCrop) * sign;
+}
+
 export function HarvestsManager({
   harvests,
   fields,
@@ -94,6 +139,10 @@ export function HarvestsManager({
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<HarvestRow | null>(null);
   const [pending, startTransition] = useTransition();
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+    key: "id",
+    dir: "asc",
+  });
 
   const fieldOptions = fields.map((f) => ({
     value: String(f.id),
@@ -156,6 +205,14 @@ export function HarvestsManager({
     });
   }
 
+  function toggleSort(key: SortKey) {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
   const totals = harvests.reduce(
     (acc, row) => {
       acc.wagePayment += row.wagePayment ?? 0;
@@ -185,8 +242,13 @@ export function HarvestsManager({
       ? `${Math.round(totals.liters / totals.sizeHa).toLocaleString()} L/ha`
       : "—";
 
-  const rows = harvests.map((row) => (
+  const sorted = [...harvests].sort((a, b) =>
+    compareHarvests(a, b, sort.key, sort.dir),
+  );
+
+  const rows = sorted.map((row) => (
     <Table.Tr key={row.id}>
+      <Table.Td>{row.id}</Table.Td>
       <Table.Td>{formatFieldNumbers(row.fields)}</Table.Td>
       <Table.Td>{row.cropType ?? "—"}</Table.Td>
       <Table.Td>{formatMoney(row.wagePayment)}</Table.Td>
@@ -229,8 +291,23 @@ export function HarvestsManager({
       <Table striped highlightOnHover withTableBorder>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th>
+              <SortHeader
+                label="ID"
+                active={sort.key === "id"}
+                dir={sort.dir}
+                onClick={() => toggleSort("id")}
+              />
+            </Table.Th>
             <Table.Th>Fields</Table.Th>
-            <Table.Th>Crop</Table.Th>
+            <Table.Th>
+              <SortHeader
+                label="Crop"
+                active={sort.key === "crop"}
+                dir={sort.dir}
+                onClick={() => toggleSort("crop")}
+              />
+            </Table.Th>
             <Table.Th>Wage</Table.Th>
             <Table.Th>Vehicle lease</Table.Th>
             <Table.Th>Fertilizer</Table.Th>
@@ -248,7 +325,7 @@ export function HarvestsManager({
             rows
           ) : (
             <Table.Tr>
-              <Table.Td colSpan={12}>
+              <Table.Td colSpan={13}>
                 <Text c="dimmed" ta="center" py="lg">
                   No harvests yet.
                 </Text>
@@ -259,6 +336,7 @@ export function HarvestsManager({
         {harvests.length > 0 && (
           <Table.Tfoot>
             <Table.Tr>
+              <Table.Td />
               <Table.Td>
                 <Text fw={700}>Total</Text>
               </Table.Td>

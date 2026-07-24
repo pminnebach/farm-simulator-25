@@ -1,6 +1,6 @@
 "use server";
 
-import { desc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { fields, harvestFields, harvests } from "@/lib/db/schema";
@@ -61,7 +61,7 @@ async function setHarvestFields(harvestId: number, fieldIds: number[]) {
 }
 
 export async function listHarvests(): Promise<HarvestRow[]> {
-  const rows = await db.select().from(harvests).orderBy(desc(harvests.id));
+  const rows = await db.select().from(harvests).orderBy(asc(harvests.id));
 
   if (rows.length === 0) return [];
 
