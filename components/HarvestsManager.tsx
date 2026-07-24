@@ -129,6 +129,14 @@ function formatLiters(n: number | null) {
   return `${formatNumber(n)} L`;
 }
 
+const calcStartStyle = {
+  borderLeft: "2px solid var(--mantine-color-default-border)",
+};
+
+const totalsRowBorder = {
+  borderTop: "2px solid var(--mantine-color-default-border)",
+};
+
 function SortHeader({
   label,
   active,
@@ -425,18 +433,22 @@ export function HarvestsManager({
       <Table.Td>{row.id}</Table.Td>
       <Table.Td>{formatFieldNumbers(row.fields)}</Table.Td>
       <Table.Td>{row.cropType ?? "—"}</Table.Td>
-      <Table.Td>{formatMoney(row.wagePayment)}</Table.Td>
+      <Table.Td style={calcStartStyle}>
+        {formatMoney(row.wagePayment)}
+      </Table.Td>
       <Table.Td>{formatMoney(row.vehicleLeasingCost)}</Table.Td>
       <Table.Td>{formatMoney(row.fertilizerCost)}</Table.Td>
       <Table.Td>{formatMoney(row.seedCost)}</Table.Td>
-      <Table.Td>
+      <Table.Td style={calcStartStyle}>
         {row.liters == null ? "—" : `${formatNumber(row.liters)} L`}
       </Table.Td>
       <Table.Td>{formatMoney(row.saleAmount)}</Table.Td>
+      <Table.Td style={calcStartStyle}>
+        {formatYield(row.liters, row.fields)}
+      </Table.Td>
       <Table.Td>{formatPerUnit(row.soldLiters, row.saleAmount)}</Table.Td>
-      <Table.Td>{formatYield(row.liters, row.fields)}</Table.Td>
       <Table.Td>{formatEuroPerHa(row.saleAmount, row.fields)}</Table.Td>
-      <Table.Td>
+      <Table.Td style={calcStartStyle}>
         <Group gap="xs">
           <Button size="xs" variant="light" onClick={() => openEdit(row)}>
             Edit
@@ -500,16 +512,16 @@ export function HarvestsManager({
                 onClick={() => toggleSort("crop")}
               />
             </Table.Th>
-            <Table.Th>Wage</Table.Th>
+            <Table.Th style={calcStartStyle}>Wage</Table.Th>
             <Table.Th>Vehicle lease</Table.Th>
             <Table.Th>Fertilizer</Table.Th>
             <Table.Th>Seed</Table.Th>
-            <Table.Th>Liters</Table.Th>
+            <Table.Th style={calcStartStyle}>Liters</Table.Th>
             <Table.Th>Sold for</Table.Th>
+            <Table.Th style={calcStartStyle}>Yield</Table.Th>
             <Table.Th>€/L</Table.Th>
-            <Table.Th>Yield</Table.Th>
             <Table.Th>€/ha</Table.Th>
-            <Table.Th>Actions</Table.Th>
+            <Table.Th style={calcStartStyle}>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -528,42 +540,42 @@ export function HarvestsManager({
         {rows.length > 0 && (
           <Table.Tfoot>
             <Table.Tr>
-              <Table.Td />
-              <Table.Td />
-              <Table.Td>
+              <Table.Td style={totalsRowBorder} />
+              <Table.Td style={totalsRowBorder} />
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>Total</Text>
               </Table.Td>
-              <Table.Td />
-              <Table.Td>
+              <Table.Td style={totalsRowBorder} />
+              <Table.Td style={{ ...totalsRowBorder, ...calcStartStyle }}>
                 <Text fw={700}>{formatMoney(totals.wagePayment)}</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>{formatMoney(totals.vehicleLeasingCost)}</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>{formatMoney(totals.fertilizerCost)}</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>{formatMoney(totals.seedCost)}</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={{ ...totalsRowBorder, ...calcStartStyle }}>
                 <Text fw={700}>{formatNumber(totals.liters)} L</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>{formatMoney(totals.saleAmount)}</Text>
               </Table.Td>
-              <Table.Td>
+              <Table.Td style={{ ...totalsRowBorder, ...calcStartStyle }}>
+                <Text fw={700}>{totalYield}</Text>
+              </Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>
                   {formatPerUnit(totals.soldLiters, totals.saleAmount)}
                 </Text>
               </Table.Td>
-              <Table.Td>
-                <Text fw={700}>{totalYield}</Text>
-              </Table.Td>
-              <Table.Td>
+              <Table.Td style={totalsRowBorder}>
                 <Text fw={700}>{totalEuroPerHa}</Text>
               </Table.Td>
-              <Table.Td />
+              <Table.Td style={{ ...totalsRowBorder, ...calcStartStyle }} />
             </Table.Tr>
           </Table.Tfoot>
         )}
