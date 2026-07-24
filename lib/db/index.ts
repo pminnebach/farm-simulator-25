@@ -57,6 +57,42 @@ function migrateHarvestSortOrder(sqlite: Database.Database) {
   `);
 }
 
+function migrateHarvestSales(sqlite: Database.Database) {
+  const columns = sqlite.prepare("PRAGMA table_info(harvests)").all() as {
+    name: string;
+  }[];
+  if (columns.length === 0) return;
+  if (!columns.some((c) => c.name === "sale_amount")) return;
+
+  const migrate = sqlite.transaction(() => {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS harvest_sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        harvest_id INTEGER NOT NULL REFERENCES harvests(id) ON DELETE CASCADE,
+        liters REAL NOT NULL,
+        sale_amount REAL NOT NULL
+      );
+    `);
+
+    const rows = sqlite
+      .prepare(
+        "SELECT id, liters, sale_amount FROM harvests WHERE sale_amount IS NOT NULL",
+      )
+      .all() as { id: number; liters: number | null; sale_amount: number }[];
+
+    const insert = sqlite.prepare(
+      "INSERT INTO harvest_sales (harvest_id, liters, sale_amount) VALUES (?, ?, ?)",
+    );
+    for (const row of rows) {
+      insert.run(row.id, row.liters ?? 0, row.sale_amount);
+    }
+
+    sqlite.exec("ALTER TABLE harvests DROP COLUMN sale_amount");
+  });
+
+  migrate();
+}
+
 // ponytail: the single-field harvests table was replaced by the multi-field one,
 // which takes over the `harvests` name. Drop once every DB has been through this.
 function migrateAdvancedHarvestsToHarvests(sqlite: Database.Database) {
@@ -118,7 +154,6 @@ function migrateAll(sqlite: Database.Database) {
       sort_order INTEGER NOT NULL DEFAULT 0,
       crop_type TEXT,
       liters REAL,
-      sale_amount REAL,
       wage_payment REAL,
       vehicle_leasing_cost REAL,
       fertilizer_cost REAL,
@@ -131,10 +166,18 @@ function migrateAll(sqlite: Database.Database) {
       field_id INTEGER NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
       PRIMARY KEY (harvest_id, field_id)
     );
+
+    CREATE TABLE IF NOT EXISTS harvest_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      harvest_id INTEGER NOT NULL REFERENCES harvests(id) ON DELETE CASCADE,
+      liters REAL NOT NULL,
+      sale_amount REAL NOT NULL
+    );
   `);
 
   migrateMergedFromJson(sqlite);
   migrateHarvestSortOrder(sqlite);
+  migrateHarvestSales(sqlite);
 }
 
 // ponytail: HMR reuses the drizzle client, so migrations must run on every module load

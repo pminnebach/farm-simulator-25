@@ -21,6 +21,7 @@ import {
   type FieldWithComponents,
   updateField,
 } from "@/lib/actions/fields";
+import { formatNumber } from "@/lib/format";
 
 type FieldFormValues = {
   number: number | string;
@@ -38,7 +39,7 @@ function formatComponents(components: FieldWithComponents["components"]) {
 function formatEuroPerHa(purchaseCost: number, sizeHa: number) {
   if (sizeHa <= 0) return "—";
   const perHa = Math.floor((purchaseCost / sizeHa) * 100) / 100;
-  return `€${perHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha`;
+  return `€${formatNumber(perHa, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha`;
 }
 
 function FieldActions({
@@ -198,8 +199,8 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
             individualFields.map((field) => (
               <Table.Tr key={field.id}>
                 <Table.Td>{field.number}</Table.Td>
-                <Table.Td>{field.sizeHa.toLocaleString()} ha</Table.Td>
-                <Table.Td>€{field.purchaseCost.toLocaleString()}</Table.Td>
+                <Table.Td>{formatNumber(field.sizeHa)} ha</Table.Td>
+                <Table.Td>€{formatNumber(field.purchaseCost)}</Table.Td>
                 <Table.Td>
                   {formatEuroPerHa(field.purchaseCost, field.sizeHa)}
                 </Table.Td>
@@ -228,12 +229,12 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  {individualTotals.sizeHa.toLocaleString()} ha
+                  {formatNumber(individualTotals.sizeHa)} ha
                 </Text>
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  €{individualTotals.purchaseCost.toLocaleString()}
+                  €{formatNumber(individualTotals.purchaseCost)}
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -269,8 +270,8 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               <Table.Tr key={field.id}>
                 <Table.Td>{field.number}</Table.Td>
                 <Table.Td>{formatComponents(field.components)}</Table.Td>
-                <Table.Td>{field.sizeHa.toLocaleString()} ha</Table.Td>
-                <Table.Td>€{field.purchaseCost.toLocaleString()}</Table.Td>
+                <Table.Td>{formatNumber(field.sizeHa)} ha</Table.Td>
+                <Table.Td>€{formatNumber(field.purchaseCost)}</Table.Td>
                 <Table.Td>
                   <FieldActions
                     field={field}
@@ -296,11 +297,11 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
               </Table.Td>
               <Table.Td />
               <Table.Td>
-                <Text fw={700}>{mergedTotals.sizeHa.toLocaleString()} ha</Text>
+                <Text fw={700}>{formatNumber(mergedTotals.sizeHa)} ha</Text>
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  €{mergedTotals.purchaseCost.toLocaleString()}
+                  €{formatNumber(mergedTotals.purchaseCost)}
                 </Text>
               </Table.Td>
               <Table.Td />

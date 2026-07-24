@@ -32,7 +32,6 @@ export const harvests = sqliteTable("harvests", {
   sortOrder: integer("sort_order").notNull(),
   cropType: text("crop_type"),
   liters: real("liters"),
-  saleAmount: real("sale_amount"),
   wagePayment: real("wage_payment"),
   vehicleLeasingCost: real("vehicle_leasing_cost"),
   fertilizerCost: real("fertilizer_cost"),
@@ -52,6 +51,15 @@ export const harvestFields = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.harvestId, t.fieldId] })],
 );
+
+export const harvestSales = sqliteTable("harvest_sales", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  harvestId: integer("harvest_id")
+    .notNull()
+    .references(() => harvests.id, { onDelete: "cascade" }),
+  liters: real("liters").notNull(),
+  saleAmount: real("sale_amount").notNull(),
+});
 
 export const fieldsRelations = relations(fields, ({ many }) => ({
   harvestFields: many(harvestFields),
@@ -74,6 +82,7 @@ export const fieldMergesRelations = relations(fieldMerges, ({ one }) => ({
 
 export const harvestsRelations = relations(harvests, ({ many }) => ({
   fields: many(harvestFields),
+  sales: many(harvestSales),
 }));
 
 export const harvestFieldsRelations = relations(harvestFields, ({ one }) => ({
@@ -87,7 +96,15 @@ export const harvestFieldsRelations = relations(harvestFields, ({ one }) => ({
   }),
 }));
 
+export const harvestSalesRelations = relations(harvestSales, ({ one }) => ({
+  harvest: one(harvests, {
+    fields: [harvestSales.harvestId],
+    references: [harvests.id],
+  }),
+}));
+
 export type Field = typeof fields.$inferSelect;
 export type FieldMerge = typeof fieldMerges.$inferSelect;
 export type Harvest = typeof harvests.$inferSelect;
 export type HarvestField = typeof harvestFields.$inferSelect;
+export type HarvestSale = typeof harvestSales.$inferSelect;

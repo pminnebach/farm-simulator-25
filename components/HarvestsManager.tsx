@@ -21,12 +21,15 @@ import type { FieldWithComponents } from "@/lib/actions/fields";
 import {
   addHarvestCosts,
   createHarvest,
+  createHarvestSale,
   deleteHarvest,
+  deleteHarvestSale,
   type HarvestRow,
   reorderHarvests,
   updateHarvest,
 } from "@/lib/actions/harvests";
 import { CROP_TYPES } from "@/lib/crops";
+import { formatNumber } from "@/lib/format";
 
 type SortKey = "order" | "id" | "crop";
 type SortDir = "asc" | "desc";
@@ -35,7 +38,6 @@ type FormValues = {
   fieldIds: string[];
   cropType: string | null;
   liters: number | string;
-  saleAmount: number | string;
   wagePayment: number | string;
   vehicleLeasingCost: number | string;
   fertilizerCost: number | string;
@@ -51,11 +53,15 @@ type CostFormValues = {
   fuelCost: number | string;
 };
 
+type SaleFormValues = {
+  liters: number | string;
+  saleAmount: number | string;
+};
+
 const emptyForm: FormValues = {
   fieldIds: [],
   cropType: null,
   liters: "",
-  saleAmount: "",
   wagePayment: "",
   vehicleLeasingCost: "",
   fertilizerCost: "",
@@ -71,9 +77,14 @@ const emptyCostForm: CostFormValues = {
   fuelCost: "",
 };
 
+const emptySaleForm: SaleFormValues = {
+  liters: "",
+  saleAmount: "",
+};
+
 function formatMoney(n: number | null) {
   if (n == null) return "—";
-  return `€${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `€${formatNumber(n, { maximumFractionDigits: 2 })}`;
 }
 
 function formatPerUnit(liters: number | null, saleAmount: number | null) {
@@ -85,7 +96,7 @@ function formatYield(liters: number | null, fields: HarvestRow["fields"]) {
   if (liters == null) return "—";
   const sizeHa = fields.reduce((sum, f) => sum + f.sizeHa, 0);
   if (sizeHa <= 0) return "—";
-  return `${Math.round(liters / sizeHa).toLocaleString()} L/ha`;
+  return `${formatNumber(Math.round(liters / sizeHa))} L/ha`;
 }
 
 function parseOptionalAmount(value: number | string): number | null {
@@ -105,6 +116,11 @@ function fieldLabel(f: FieldWithComponents) {
 function formatFieldNumbers(fields: HarvestRow["fields"]) {
   if (fields.length === 0) return "—";
   return fields.map((f) => `#${f.number}`).join(", ");
+}
+
+function formatLiters(n: number | null) {
+  if (n == null) return "—";
+  return `${formatNumber(n)} L`;
 }
 
 function SortHeader({
@@ -168,8 +184,11 @@ export function HarvestsManager({
   const [opened, { open, close }] = useDisclosure(false);
   const [costsOpened, { open: openCosts, close: closeCosts }] =
     useDisclosure(false);
+  const [salesOpened, { open: openSales, close: closeSales }] =
+    useDisclosure(false);
   const [editing, setEditing] = useState<HarvestRow | null>(null);
   const [addingCosts, setAddingCosts] = useState<HarvestRow | null>(null);
+  const [managingSales, setManagingSales] = useState<HarvestRow | null>(null);
   const [pending, startTransition] = useTransition();
   const [rows, setRows] = useState(harvests);
   const [dragId, setDragId] = useState<number | null>(null);
@@ -181,6 +200,10 @@ export function HarvestsManager({
 
   useEffect(() => {
     setRows(harvests);
+    setManagingSales((prev) => {
+      if (!prev) return null;
+      return harvests.find((h) => h.id === prev.id) ?? null;
+    });
   }, [harvests]);
 
   const canDrag = sort.key === "order";
@@ -198,6 +221,10 @@ export function HarvestsManager({
     initialValues: emptyCostForm,
   });
 
+  const saleForm = useForm<SaleFormValues>({
+    initialValues: emptySaleForm,
+  });
+
   function openCreate() {
     setEditing(null);
     form.setValues(emptyForm);
@@ -210,7 +237,6 @@ export function HarvestsManager({
       fieldIds: row.fields.map((f) => String(f.id)),
       cropType: row.cropType,
       liters: row.liters ?? "",
-      saleAmount: row.saleAmount ?? "",
       wagePayment: row.wagePayment ?? "",
       vehicleLeasingCost: row.vehicleLeasingCost ?? "",
       fertilizerCost: row.fertilizerCost ?? "",
@@ -226,12 +252,17 @@ export function HarvestsManager({
     openCosts();
   }
 
+  function openManageSales(row: HarvestRow) {
+    setManagingSales(row);
+    saleForm.setValues(emptySaleForm);
+    openSales();
+  }
+
   function handleSubmit(values: FormValues) {
     const input = {
       fieldIds: values.fieldIds.map(Number),
       cropType: values.cropType,
       liters: parseOptionalAmount(values.liters),
-      saleAmount: parseOptionalAmount(values.saleAmount),
       wagePayment: parseOptionalAmount(values.wagePayment),
       vehicleLeasingCost: parseOptionalAmount(values.vehicleLeasingCost),
       fertilizerCost: parseOptionalAmount(values.fertilizerCost),
@@ -260,6 +291,25 @@ export function HarvestsManager({
         fuelCost: parseOptionalAmount(values.fuelCost),
       });
       closeCosts();
+    });
+  }
+
+  function handleAddSale(values: SaleFormValues) {
+    if (!managingSales) return;
+    const liters = parseOptionalAmount(values.liters);
+    const saleAmount = parseOptionalAmount(values.saleAmount);
+    if (liters == null || saleAmount == null) return;
+
+    startTransition(async () => {
+      await createHarvestSale(managingSales.id, { liters, saleAmount });
+      saleForm.setValues(emptySaleForm);
+    });
+  }
+
+  function handleDeleteSale(id: number) {
+    if (!confirm("Delete this sale?")) return;
+    startTransition(async () => {
+      await deleteHarvestSale(id);
     });
   }
 
@@ -300,6 +350,7 @@ export function HarvestsManager({
       acc.fuelCost += row.fuelCost ?? 0;
       acc.liters += row.liters ?? 0;
       acc.saleAmount += row.saleAmount ?? 0;
+      acc.soldLiters += row.soldLiters;
       acc.sizeHa += row.fields.reduce((sum, f) => sum + f.sizeHa, 0);
       return acc;
     },
@@ -311,19 +362,25 @@ export function HarvestsManager({
       fuelCost: 0,
       liters: 0,
       saleAmount: 0,
+      soldLiters: 0,
       sizeHa: 0,
     },
   );
 
   const totalYield =
     totals.liters > 0 && totals.sizeHa > 0
-      ? `${Math.round(totals.liters / totals.sizeHa).toLocaleString()} L/ha`
+      ? `${formatNumber(Math.round(totals.liters / totals.sizeHa))} L/ha`
       : "—";
 
   const sorted =
     sort.key === "order"
       ? rows
       : [...rows].sort((a, b) => compareHarvests(a, b, sort.key, sort.dir));
+
+  const remainingLiters =
+    managingSales?.liters == null
+      ? null
+      : managingSales.liters - managingSales.soldLiters;
 
   const tableRows = sorted.map((row) => (
     <Table.Tr
@@ -368,22 +425,25 @@ export function HarvestsManager({
       <Table.Td>{formatMoney(row.seedCost)}</Table.Td>
       <Table.Td>{formatMoney(row.fuelCost)}</Table.Td>
       <Table.Td>
-        {row.liters == null ? "—" : `${row.liters.toLocaleString()} L`}
+        {row.liters == null ? "—" : `${formatNumber(row.liters)} L`}
       </Table.Td>
       <Table.Td>{formatMoney(row.saleAmount)}</Table.Td>
-      <Table.Td>{formatPerUnit(row.liters, row.saleAmount)}</Table.Td>
+      <Table.Td>{formatPerUnit(row.soldLiters, row.saleAmount)}</Table.Td>
       <Table.Td>{formatYield(row.liters, row.fields)}</Table.Td>
       <Table.Td>
         <Group gap="xs">
           <Button size="xs" variant="light" onClick={() => openEdit(row)}>
             Edit
           </Button>
+          <Button size="xs" variant="light" onClick={() => openAddCosts(row)}>
+            Add costs
+          </Button>
           <Button
             size="xs"
             variant="light"
-            onClick={() => openAddCosts(row)}
+            onClick={() => openManageSales(row)}
           >
-            Add costs
+            Sales
           </Button>
           <Button
             size="xs"
@@ -484,14 +544,14 @@ export function HarvestsManager({
                 <Text fw={700}>{formatMoney(totals.fuelCost)}</Text>
               </Table.Td>
               <Table.Td>
-                <Text fw={700}>{totals.liters.toLocaleString()} L</Text>
+                <Text fw={700}>{formatNumber(totals.liters)} L</Text>
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>{formatMoney(totals.saleAmount)}</Text>
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>
-                  {formatPerUnit(totals.liters, totals.saleAmount)}
+                  {formatPerUnit(totals.soldLiters, totals.saleAmount)}
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -561,12 +621,6 @@ export function HarvestsManager({
               decimalScale={2}
               {...form.getInputProps("liters")}
             />
-            <NumberInput
-              label="Sold for (€)"
-              min={0}
-              decimalScale={2}
-              {...form.getInputProps("saleAmount")}
-            />
             <Group justify="flex-end">
               <Button variant="default" onClick={close}>
                 Cancel
@@ -627,6 +681,87 @@ export function HarvestsManager({
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={salesOpened}
+        onClose={closeSales}
+        title="Sales"
+        size="md"
+      >
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Harvested {formatLiters(managingSales?.liters ?? null)} · Sold{" "}
+            {formatLiters(managingSales?.soldLiters ?? 0)} · Remaining{" "}
+            {formatLiters(remainingLiters)}
+          </Text>
+
+          {managingSales && managingSales.sales.length > 0 ? (
+            <Table withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Liters</Table.Th>
+                  <Table.Th>Sold for</Table.Th>
+                  <Table.Th>€/L</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {managingSales.sales.map((sale) => (
+                  <Table.Tr key={sale.id}>
+                    <Table.Td>{formatLiters(sale.liters)}</Table.Td>
+                    <Table.Td>{formatMoney(sale.saleAmount)}</Table.Td>
+                    <Table.Td>
+                      {formatPerUnit(sale.liters, sale.saleAmount)}
+                    </Table.Td>
+                    <Table.Td>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="red"
+                        onClick={() => handleDeleteSale(sale.id)}
+                        disabled={pending}
+                      >
+                        Delete
+                      </Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          ) : (
+            <Text size="sm" c="dimmed">
+              No sales yet.
+            </Text>
+          )}
+
+          <form onSubmit={saleForm.onSubmit(handleAddSale)}>
+            <Stack>
+              <NumberInput
+                label="Liters"
+                min={0}
+                decimalScale={2}
+                required
+                {...saleForm.getInputProps("liters")}
+              />
+              <NumberInput
+                label="Sold for (€)"
+                min={0}
+                decimalScale={2}
+                required
+                {...saleForm.getInputProps("saleAmount")}
+              />
+              <Group justify="flex-end">
+                <Button variant="default" onClick={closeSales}>
+                  Close
+                </Button>
+                <Button type="submit" loading={pending}>
+                  Add sale
+                </Button>
+              </Group>
+            </Stack>
+          </form>
+        </Stack>
       </Modal>
     </>
   );

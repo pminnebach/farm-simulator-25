@@ -3,12 +3,18 @@
 import { asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { fields, harvestFields, harvests } from "@/lib/db/schema";
+import { fields, harvestFields, harvestSales, harvests } from "@/lib/db/schema";
 
 export type HarvestFieldRef = {
   id: number;
   number: number;
   sizeHa: number;
+};
+
+export type HarvestSaleRow = {
+  id: number;
+  liters: number;
+  saleAmount: number;
 };
 
 export type HarvestRow = {
@@ -17,19 +23,20 @@ export type HarvestRow = {
   cropType: string | null;
   liters: number | null;
   saleAmount: number | null;
+  soldLiters: number;
   wagePayment: number | null;
   vehicleLeasingCost: number | null;
   fertilizerCost: number | null;
   seedCost: number | null;
   fuelCost: number | null;
   fields: HarvestFieldRef[];
+  sales: HarvestSaleRow[];
 };
 
 export type HarvestInput = {
   fieldIds: number[];
   cropType: string | null;
   liters: number | null;
-  saleAmount: number | null;
   wagePayment: number | null;
   vehicleLeasingCost: number | null;
   fertilizerCost: number | null;
@@ -41,7 +48,6 @@ function harvestValues(input: HarvestInput) {
   return {
     cropType: input.cropType,
     liters: input.liters,
-    saleAmount: input.saleAmount,
     wagePayment: input.wagePayment,
     vehicleLeasingCost: input.vehicleLeasingCost,
     fertilizerCost: input.fertilizerCost,
@@ -81,6 +87,12 @@ export async function listHarvests(): Promise<HarvestRow[]> {
     .innerJoin(fields, eq(harvestFields.fieldId, fields.id))
     .where(inArray(harvestFields.harvestId, harvestIds));
 
+  const sales = await db
+    .select()
+    .from(harvestSales)
+    .where(inArray(harvestSales.harvestId, harvestIds))
+    .orderBy(asc(harvestSales.id));
+
   const fieldsByHarvest = new Map<number, HarvestFieldRef[]>();
   for (const link of links) {
     const list = fieldsByHarvest.get(link.harvestId) ?? [];
@@ -92,19 +104,41 @@ export async function listHarvests(): Promise<HarvestRow[]> {
     list.sort((a, b) => a.number - b.number);
   }
 
-  return rows.map((row) => ({
-    id: row.id,
-    sortOrder: row.sortOrder,
-    cropType: row.cropType,
-    liters: row.liters,
-    saleAmount: row.saleAmount,
-    wagePayment: row.wagePayment,
-    vehicleLeasingCost: row.vehicleLeasingCost,
-    fertilizerCost: row.fertilizerCost,
-    seedCost: row.seedCost,
-    fuelCost: row.fuelCost,
-    fields: fieldsByHarvest.get(row.id) ?? [],
-  }));
+  const salesByHarvest = new Map<number, HarvestSaleRow[]>();
+  for (const sale of sales) {
+    const list = salesByHarvest.get(sale.harvestId) ?? [];
+    list.push({
+      id: sale.id,
+      liters: sale.liters,
+      saleAmount: sale.saleAmount,
+    });
+    salesByHarvest.set(sale.harvestId, list);
+  }
+
+  return rows.map((row) => {
+    const harvestSaleRows = salesByHarvest.get(row.id) ?? [];
+    const soldLiters = harvestSaleRows.reduce((sum, s) => sum + s.liters, 0);
+    const saleAmount =
+      harvestSaleRows.length === 0
+        ? null
+        : harvestSaleRows.reduce((sum, s) => sum + s.saleAmount, 0);
+
+    return {
+      id: row.id,
+      sortOrder: row.sortOrder,
+      cropType: row.cropType,
+      liters: row.liters,
+      saleAmount,
+      soldLiters,
+      wagePayment: row.wagePayment,
+      vehicleLeasingCost: row.vehicleLeasingCost,
+      fertilizerCost: row.fertilizerCost,
+      seedCost: row.seedCost,
+      fuelCost: row.fuelCost,
+      fields: fieldsByHarvest.get(row.id) ?? [],
+      sales: harvestSaleRows,
+    };
+  });
 }
 
 export async function createHarvest(input: HarvestInput) {
@@ -171,6 +205,23 @@ export async function addHarvestCosts(id: number, deltas: HarvestCostDeltas) {
       fuelCost: add(row.fuelCost, deltas.fuelCost),
     })
     .where(eq(harvests.id, id));
+  revalidatePath("/harvests");
+}
+
+export async function createHarvestSale(
+  harvestId: number,
+  input: { liters: number; saleAmount: number },
+) {
+  await db.insert(harvestSales).values({
+    harvestId,
+    liters: input.liters,
+    saleAmount: input.saleAmount,
+  });
+  revalidatePath("/harvests");
+}
+
+export async function deleteHarvestSale(id: number) {
+  await db.delete(harvestSales).where(eq(harvestSales.id, id));
   revalidatePath("/harvests");
 }
 
