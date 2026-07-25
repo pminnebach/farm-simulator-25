@@ -433,9 +433,7 @@ export function HarvestsManager({
       <Table.Td>{row.id}</Table.Td>
       <Table.Td>{formatFieldNumbers(row.fields)}</Table.Td>
       <Table.Td>{row.cropType ?? "—"}</Table.Td>
-      <Table.Td style={calcStartStyle}>
-        {formatMoney(row.wagePayment)}
-      </Table.Td>
+      <Table.Td style={calcStartStyle}>{formatMoney(row.wagePayment)}</Table.Td>
       <Table.Td>{formatMoney(row.vehicleLeasingCost)}</Table.Td>
       <Table.Td>{formatMoney(row.fertilizerCost)}</Table.Td>
       <Table.Td>{formatMoney(row.seedCost)}</Table.Td>
@@ -689,12 +687,7 @@ export function HarvestsManager({
         </form>
       </Modal>
 
-      <Modal
-        opened={salesOpened}
-        onClose={closeSales}
-        title="Sales"
-        size="md"
-      >
+      <Modal opened={salesOpened} onClose={closeSales} title="Sales" size="md">
         <Stack>
           <Text size="sm" c="dimmed">
             Harvested {formatLiters(managingSales?.liters ?? null)} · Sold{" "}

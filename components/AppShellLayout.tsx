@@ -42,7 +42,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" style={{ flex: 1 }}>
           <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="sm"
+            />
             <Title order={3}>Farm Manager</Title>
           </Group>
           <ActionIcon

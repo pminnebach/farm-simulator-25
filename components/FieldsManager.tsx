@@ -228,9 +228,7 @@ export function FieldsManager({ fields }: { fields: FieldWithComponents[] }) {
                 <Text fw={700}>Total</Text>
               </Table.Td>
               <Table.Td>
-                <Text fw={700}>
-                  {formatNumber(individualTotals.sizeHa)} ha
-                </Text>
+                <Text fw={700}>{formatNumber(individualTotals.sizeHa)} ha</Text>
               </Table.Td>
               <Table.Td>
                 <Text fw={700}>

@@ -194,7 +194,10 @@ export async function addHarvestCosts(id: number, deltas: HarvestCostDeltas) {
     .update(harvests)
     .set({
       wagePayment: add(row.wagePayment, deltas.wagePayment),
-      vehicleLeasingCost: add(row.vehicleLeasingCost, deltas.vehicleLeasingCost),
+      vehicleLeasingCost: add(
+        row.vehicleLeasingCost,
+        deltas.vehicleLeasingCost,
+      ),
       fertilizerCost: add(row.fertilizerCost, deltas.fertilizerCost),
       seedCost: add(row.seedCost, deltas.seedCost),
     })
